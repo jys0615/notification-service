@@ -25,16 +25,24 @@ class NotificationController(
 
     /** 단건 상태 조회 */
     @GetMapping("/{id}")
-    fun getById(@PathVariable id: Long): ResponseEntity<NotificationResponse> {
-        return ResponseEntity.ok(notificationService.getById(id))
-    }
+    fun getById(@PathVariable id: Long): ResponseEntity<NotificationResponse> =
+        ResponseEntity.ok(notificationService.getById(id))
 
-    /** 수신자 기준 목록 조회 */
+    /** 수신자 기준 목록 조회 (읽음/안읽음 필터 선택) */
     @GetMapping
     fun listByRecipient(
         @RequestParam recipientId: Long,
         @RequestParam(required = false) read: Boolean?
-    ): ResponseEntity<List<NotificationResponse>> {
-        return ResponseEntity.ok(notificationService.listByRecipient(recipientId, read))
-    }
+    ): ResponseEntity<List<NotificationResponse>> =
+        ResponseEntity.ok(notificationService.listByRecipient(recipientId, read))
+
+    /** 읽음 처리 */
+    @PatchMapping("/{id}/read")
+    fun markRead(@PathVariable id: Long): ResponseEntity<NotificationResponse> =
+        ResponseEntity.ok(notificationService.markRead(id))
+
+    /** DEAD_LETTER 수동 재시도 */
+    @PostMapping("/{id}/retry")
+    fun manualRetry(@PathVariable id: Long): ResponseEntity<NotificationResponse> =
+        ResponseEntity.ok(notificationService.manualRetry(id))
 }

@@ -82,7 +82,15 @@ class Notification(
     val createdAt: LocalDateTime = LocalDateTime.now(),
 
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: LocalDateTime = LocalDateTime.now()
+    var updatedAt: LocalDateTime = LocalDateTime.now(),
+
+    /**
+     * 낙관적 락 버전.
+     * 동시에 읽음 처리 요청이 여러 건 들어와도 한 건만 실제 UPDATE가 되고
+     * 나머지는 ObjectOptimisticLockingFailureException을 받습니다.
+     */
+    @Version
+    var version: Long = 0
 
 ) {
     companion object {
@@ -122,6 +130,19 @@ class Notification(
     fun markRead() {
         isRead = true
         readAt = LocalDateTime.now()
+        updatedAt = LocalDateTime.now()
+    }
+
+    /**
+     * 수동 재시도 (DEAD_LETTER → PENDING).
+     * retryCount를 0으로 초기화해서 재시도 횟수를 완전히 리셋합니다.
+     * 운영자가 명시적으로 재시도를 요청한 것이므로 새로운 시도로 간주합니다.
+     */
+    fun resetForManualRetry() {
+        status = NotificationStatus.PENDING
+        retryCount = 0
+        failureReason = null
+        processingStartedAt = null
         updatedAt = LocalDateTime.now()
     }
 }
