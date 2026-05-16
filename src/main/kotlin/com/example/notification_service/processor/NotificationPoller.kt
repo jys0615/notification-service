@@ -7,10 +7,10 @@ import org.springframework.stereotype.Component
 import java.time.LocalDateTime
 
 /**
- * 주기적으로 DB를 폴링해서 처리 대상 알림을 꺼내 발송합니다.
+ * 주기적으로 DB를 폴링해서 처리 대상 알림 ID를 꺼내 발송합니다.
  *
- * 현재는 @Scheduled 폴링 방식(Outbox Pattern)으로 구현합니다.
  * 운영 환경으로 전환할 때는 이 클래스를 Kafka Consumer / RabbitMQ Listener로 교체하면 됩니다.
+ * ProcessorService의 인터페이스는 변경할 필요가 없습니다.
  */
 @Component
 class NotificationPoller(
@@ -19,17 +19,13 @@ class NotificationPoller(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    /**
-     * fixedDelay: 이전 실행이 끝난 후 5초 뒤에 다시 실행.
-     * fixedRate와 달리 처리 시간이 길어져도 중복 실행이 발생하지 않습니다.
-     */
     @Scheduled(fixedDelay = 5000)
     fun poll() {
-        val targets = notificationRepository.findProcessable(LocalDateTime.now())
+        val ids = notificationRepository.findProcessableIds(LocalDateTime.now())
 
-        if (targets.isEmpty()) return
+        if (ids.isEmpty()) return
 
-        log.info("[POLLER] 처리 대상 {} 건 발견", targets.size)
-        targets.forEach { processorService.process(it) }
+        log.info("[POLLER] 처리 대상 {} 건 발견", ids.size)
+        ids.forEach { processorService.process(it) }
     }
 }
