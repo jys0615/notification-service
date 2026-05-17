@@ -6,6 +6,7 @@ import com.example.notification_service.dto.NotificationRequest
 import com.example.notification_service.dto.NotificationResponse
 import com.example.notification_service.exception.NotificationNotFoundException
 import com.example.notification_service.repository.NotificationRepository
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -37,7 +38,14 @@ class NotificationService(
             scheduledAt = request.scheduledAt
         )
 
-        return NotificationResponse.from(notificationRepository.save(notification))
+        return try {
+            NotificationResponse.from(notificationRepository.save(notification))
+        } catch (e: DataIntegrityViolationException) {
+            // 동시 요청으로 인한 unique constraint 위반 — 먼저 저장된 알림을 반환 (멱등 처리)
+            val existing = notificationRepository.findByIdempotencyKey(idempotencyKey)
+                ?: throw e
+            NotificationResponse.from(existing)
+        }
     }
 
     fun getById(id: Long): NotificationResponse {
