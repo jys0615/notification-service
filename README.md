@@ -340,6 +340,7 @@ POST /api/notifications/1/retry
 - 인증/인가 미구현 (userId를 파라미터로 전달하는 방식)
 - 템플릿이 실제 발송 메시지에 자동 적용되지 않음 (관리 API만 제공)
 - 재시도 백오프 정책 미구현 (폴링 주기에 의존)
+- `process()` 내에서 DB 락(SELECT FOR UPDATE)을 유지한 채 외부 발송 호출이 이루어짐. 운영 전환 시 PROCESSING 저장을 별도 트랜잭션으로 분리하는 리팩토링 필요
 
 ---
 

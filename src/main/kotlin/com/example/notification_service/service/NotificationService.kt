@@ -16,7 +16,7 @@ class NotificationService(
     private val notificationRepository: NotificationRepository
 ) {
 
-    @Transactional
+    @Transactional(noRollbackFor = [DataIntegrityViolationException::class])
     fun register(request: NotificationRequest): NotificationResponse {
         val idempotencyKey = Notification.buildIdempotencyKey(
             recipientId = request.recipientId,
@@ -39,9 +39,11 @@ class NotificationService(
         )
 
         return try {
-            NotificationResponse.from(notificationRepository.save(notification))
+            // saveAndFlush: 즉시 DB에 반영해서 constraint 위반을 이 시점에 감지
+            NotificationResponse.from(notificationRepository.saveAndFlush(notification))
         } catch (e: DataIntegrityViolationException) {
             // 동시 요청으로 인한 unique constraint 위반 — 먼저 저장된 알림을 반환 (멱등 처리)
+            // noRollbackFor로 트랜잭션이 rollback-only 상태가 되지 않아 후속 쿼리가 가능
             val existing = notificationRepository.findByIdempotencyKey(idempotencyKey)
                 ?: throw e
             NotificationResponse.from(existing)

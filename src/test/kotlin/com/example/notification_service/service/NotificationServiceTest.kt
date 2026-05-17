@@ -81,7 +81,7 @@ class NotificationServiceTest {
             val request = buildRequest()
             val saved = buildNotification()
             `when`(notificationRepository.findByIdempotencyKey(any())).thenReturn(null)
-            `when`(notificationRepository.save(any())).thenReturn(saved)
+            `when`(notificationRepository.saveAndFlush(any())).thenReturn(saved)
 
             val response = notificationService.register(request)
 
