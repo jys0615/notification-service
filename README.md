@@ -209,27 +209,94 @@ POST /api/templates
 
 사용 가능한 플레이스홀더: `{recipientId}`, `{referenceId}`, `{referenceType}`, `{notificationType}`
 
+### 단건 상태 조회
+
+```
+GET /api/notifications/1
+```
+
+응답 (200 OK):
+```json
+{
+  "id": 1,
+  "status": "SENT",
+  "retryCount": 0,
+  "failureReason": null,
+  "sentAt": "2026-05-16T12:00:05"
+}
+```
+
+### 목록 조회 (안읽은 알림만)
+
+```
+GET /api/notifications?recipientId=1&read=false
+```
+
+### 읽음 처리
+
+```
+PATCH /api/notifications/1/read
+```
+
+응답 (200 OK):
+```json
+{
+  "id": 1,
+  "isRead": true,
+  "readAt": "2026-05-16T12:01:00"
+}
+```
+
+### 수동 재시도 (DEAD_LETTER → PENDING)
+
+```
+POST /api/notifications/1/retry
+```
+
+응답 (200 OK):
+```json
+{
+  "id": 1,
+  "status": "PENDING",
+  "retryCount": 0
+}
+```
+
+오류 응답 (409 Conflict — DEAD_LETTER 아닌 경우):
+```json
+{
+  "status": 409,
+  "error": "Conflict",
+  "message": "DEAD_LETTER 상태의 알림만 수동 재시도할 수 있습니다"
+}
+```
+
 ---
 
 ## 데이터 모델 설명
 
 ### notifications
 
-| 컬럼 | 설명 |
-|---|---|
-| id | PK |
-| recipient_id | 수신자 ID |
-| notification_type | 알림 종류 (ENROLLMENT_COMPLETED 등) |
-| channel | EMAIL / IN_APP |
-| reference_id | 이벤트/강의 ID 등 참조 식별자 |
-| idempotency_key | 중복 방지 unique key |
-| status | PENDING / PROCESSING / SENT / FAILED / DEAD_LETTER |
-| retry_count | 재시도 횟수 |
-| failure_reason | 실패 사유 |
-| is_read | 읽음 여부 |
-| scheduled_at | 예약 발송 시각 (null = 즉시) |
-| processing_started_at | Stuck 감지용 처리 시작 시각 |
-| version | 낙관적 락 버전 |
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | BIGINT (PK) | 자동 증가 |
+| recipient_id | BIGINT | 수신자 ID |
+| notification_type | VARCHAR | ENROLLMENT_COMPLETED 등 |
+| channel | VARCHAR | EMAIL / IN_APP |
+| reference_id | VARCHAR | 이벤트/강의 ID 등 참조 식별자 |
+| reference_type | VARCHAR | COURSE / PAYMENT 등 |
+| idempotency_key | VARCHAR (UNIQUE) | 중복 방지 키 |
+| status | VARCHAR | PENDING / PROCESSING / SENT / FAILED / DEAD_LETTER |
+| retry_count | INT | 재시도 횟수 |
+| failure_reason | TEXT | 실패 사유 |
+| is_read | BOOLEAN | 읽음 여부 (IN_APP) |
+| read_at | TIMESTAMP | 읽은 시각 |
+| scheduled_at | TIMESTAMP | 예약 발송 시각 (null = 즉시) |
+| sent_at | TIMESTAMP | 발송 완료 시각 |
+| processing_started_at | TIMESTAMP | 처리 시작 시각 (Stuck 감지용) |
+| version | BIGINT | 낙관적 락 버전 |
+| created_at | TIMESTAMP | 생성 시각 |
+| updated_at | TIMESTAMP | 수정 시각 |
 
 인덱스: `idx_recipient_id`, `idx_status`, `idx_scheduled_at`
 
